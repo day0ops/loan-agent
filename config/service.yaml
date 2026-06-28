@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: loan-agent
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/managed-by: agentgateway-demo
+    agentgateway.dev/feature: workload-agent
+    app: loan-agent
+spec:
+  selector:
+    app: loan-agent
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP

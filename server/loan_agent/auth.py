@@ -92,7 +92,7 @@ class WorkloadTokenProvider:
         sts_data = {
             "grant_type": _GRANT_TOKEN_EXCHANGE,
             "subject_token": kc_token,
-            "subject_token_type": _TOKEN_TYPE_ACCESS,
+            "subject_token_type": _TOKEN_TYPE_JWT,
             "actor_token": sa_token,
             "actor_token_type": _TOKEN_TYPE_JWT,
         }

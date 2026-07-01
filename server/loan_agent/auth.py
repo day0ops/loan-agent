@@ -1,25 +1,20 @@
 """Workload identity token acquisition for the loan agent.
 
-Four operating modes controlled by environment variables:
+Three operating modes controlled by environment variables:
 
-agentgateway-managed STS (USE_AGENTGATEWAY_STS=true)
-  App skips the STS exchange entirely. A plain Keycloak client_credentials
-  token is used; agentgateway's native OBO elicitation performs the token
-  exchange at the gateway level. STS_URL may still be set but is ignored.
-
-App-level STS OBO exchange (STS_URL set, USE_AGENTGATEWAY_STS=false)
+agentgateway STS OBO exchange (USE_AGENTGATEWAY_STS=true)
   Two-step RFC 8693 exchange used in UC1 (fd-loan-rbac-native-obo):
   1. Fetch a Keycloak access token via client_credentials (client_id=loan-agent).
-  2. POST KC token + K8s SA JWT to the agentgateway STS (RFC 8693 token-exchange).
+  2. POST KC token + K8s SA JWT to the agentgateway STS (STS_URL).
   The STS returns a short-lived OBO token (iss=STS, client_id=loan-agent) that is
   accepted at /fd-agent (Strict JWT, STS issuer).
 
-KC token-exchange (USE_TOKEN_EXCHANGE=true, no STS_URL)
+KC token-exchange (USE_TOKEN_EXCHANGE=true, USE_AGENTGATEWAY_STS=false)
   Exchange the auto-mounted K8s SA JWT directly at Keycloak (RFC 8693).
   Used in UC2 (workload-identity chain).
 
 Client credentials (default)
-  Fetch a Keycloak access token via client_credentials — no SA JWT required.
+  Plain Keycloak client_credentials token — no STS or SA exchange.
 
 Token cached in-memory, refreshed 30 seconds before expiry.
 """
@@ -64,8 +59,6 @@ class WorkloadTokenProvider:
                 return self._token
             self._token, self._expires_at = await self._fetch()
             if _USE_AGENTGATEWAY_STS:
-                mode = "agentgateway-managed-sts"
-            elif _STS_URL:
                 mode = "sts-obo-exchange"
             elif _USE_TOKEN_EXCHANGE:
                 mode = "kc-token-exchange"
@@ -79,7 +72,7 @@ class WorkloadTokenProvider:
             return self._token
 
     async def _fetch(self) -> tuple[str, float]:
-        if _STS_URL and not _USE_AGENTGATEWAY_STS:
+        if _USE_AGENTGATEWAY_STS:
             return await self._fetch_sts_obo()
         token_url = f"{_KEYCLOAK_URL}/realms/{_REALM}/protocol/openid-connect/token"
         data = self._build_exchange_data() if _USE_TOKEN_EXCHANGE else self._build_client_credentials_data()
